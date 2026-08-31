@@ -1,0 +1,14 @@
+# OPTIONAL — upgrades the unknown-command classifier from the built-in offline
+# fallback embedder to real sentence-transformer embeddings (all-MiniLM-L6-v2).
+#
+# The application runs fully WITHOUT these (using EMBEDDING_BACKEND=hashing/auto).
+# Install for the richest semantic generalization. The first run downloads the
+# model (~90 MB) once, after which it works offline.
+#
+#   pip install -r requirements-ml.txt
+#
+sentence-transformers==3.3.1
+
+# FAISS is optional. The app defaults to a numpy brute-force vector store, which
+# is more than fast enough for a hackathon-scale exemplar set. Uncomment to use:
+# faiss-cpu==1.9.0

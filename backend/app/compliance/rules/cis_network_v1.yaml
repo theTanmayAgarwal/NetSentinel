@@ -1,0 +1,151 @@
+# CIS-style network device security baseline (v1).
+#
+# This rule set is DATA, not code: the engine evaluates each control against the
+# vendor-neutral SecurityModel using a small, safe operator DSL. No rule can
+# execute arbitrary logic. Configuration text is never treated as instructions.
+#
+# Fields:
+#   id, title, category, framework  -> identity / reporting
+#   field                           -> normalized SecurityModel field to inspect
+#   op                              -> is_true | is_false | equals | not_equals |
+#                                      min | max | range | present
+#   value                           -> operand for the op (omitted for boolean ops)
+#   severity                        -> CRITICAL | HIGH | MEDIUM | LOW  (on failure)
+#   on_missing                      -> status when the field is None/undetermined:
+#                                      PASS | WARNING | FAIL | NOT_APPLICABLE
+#   rationale                       -> why it matters (drives templated explanation)
+#
+# Absence-based / negative controls (the insecure thing must NOT be present):
+#   NET-01 (telnet), NET-04 (http mgmt), NET-05 (default snmp), NET-09 (cleartext).
+
+framework: CIS
+version: "1.0"
+controls:
+  - id: NET-01
+    title: "Insecure remote management (Telnet) must be disabled"
+    category: "Secure Management"
+    field: telnet_enabled
+    op: is_false
+    severity: CRITICAL
+    on_missing: PASS
+    rationale: "Telnet transmits credentials and session data in cleartext, allowing trivial interception of administrative access. SSH must be used instead."
+
+  - id: NET-02
+    title: "Encrypted remote management (SSH) must be enabled"
+    category: "Secure Management"
+    field: ssh_enabled
+    op: is_true
+    severity: HIGH
+    on_missing: WARNING
+    rationale: "SSH provides authenticated, encrypted administrative access. Without it, operators fall back to insecure protocols or lose secure remote management."
+
+  - id: NET-03
+    title: "SSH protocol version 2 must be enforced"
+    category: "Secure Management"
+    field: ssh_version
+    op: equals
+    value: 2
+    severity: MEDIUM
+    on_missing: WARNING
+    rationale: "SSHv1 has known cryptographic weaknesses and is deprecated. Only SSH version 2 should be permitted."
+
+  - id: NET-04
+    title: "Plaintext HTTP management interface must be disabled"
+    category: "Secure Management"
+    field: http_mgmt_enabled
+    op: is_false
+    severity: MEDIUM
+    on_missing: PASS
+    rationale: "HTTP management exposes administrative sessions and credentials in cleartext. Use HTTPS or disable web management entirely."
+
+  - id: NET-05
+    title: "Default SNMP community strings must not be used"
+    category: "SNMP"
+    field: snmp_default_community
+    op: is_false
+    severity: CRITICAL
+    on_missing: PASS
+    rationale: "Default community strings such as 'public' and 'private' are publicly known and grant unauthenticated access to device information. They must be removed."
+
+  - id: NET-06
+    title: "AAA (authentication, authorization, accounting) should be enabled"
+    category: "Authentication"
+    field: aaa_enabled
+    op: is_true
+    severity: MEDIUM
+    on_missing: WARNING
+    rationale: "Centralized AAA enforces consistent authentication and provides an accountability trail for administrative actions."
+
+  - id: NET-07
+    title: "A privileged-mode secret must be configured"
+    category: "Authentication"
+    field: enable_secret_set
+    op: is_true
+    severity: HIGH
+    on_missing: WARNING
+    rationale: "Privileged (enable) access must be protected by a hashed secret. An unset or plaintext enable password exposes full device control."
+
+  - id: NET-08
+    title: "Password encryption for stored credentials must be enabled"
+    category: "Authentication"
+    field: password_encryption_enabled
+    op: is_true
+    severity: MEDIUM
+    on_missing: WARNING
+    rationale: "Without password encryption, credentials are stored and displayed in cleartext in the running configuration."
+
+  - id: NET-09
+    title: "No cleartext or weak-reversible passwords may be present"
+    category: "Authentication"
+    field: weak_plaintext_credentials
+    op: is_false
+    severity: HIGH
+    on_missing: PASS
+    rationale: "Cleartext (type 0) and reversible (type 7 / plain-text) passwords can be trivially recovered. Use strong one-way hashing (e.g. secret / encrypted-password)."
+
+  - id: NET-10
+    title: "Minimum password length must be at least 8"
+    category: "Authentication"
+    field: password_min_length
+    op: min
+    value: 8
+    severity: MEDIUM
+    on_missing: WARNING
+    rationale: "Short minimum password lengths make brute-force and guessing attacks feasible. Enforce a minimum length of at least 8 characters."
+
+  - id: NET-11
+    title: "Administrative idle timeout must be between 1 and 10 minutes"
+    category: "Session Management"
+    field: idle_timeout_minutes
+    op: range
+    value: [1, 10]
+    severity: MEDIUM
+    on_missing: WARNING
+    rationale: "Sessions with no timeout (or an excessively long one) leave authenticated administrative access open on unattended terminals."
+
+  - id: NET-12
+    title: "A login banner must be configured"
+    category: "Session Management"
+    field: login_banner_set
+    op: is_true
+    severity: LOW
+    on_missing: WARNING
+    rationale: "A legal/authorized-use banner supports incident response and is required by many compliance regimes."
+
+  - id: NET-13
+    title: "Remote logging (syslog) must be enabled"
+    category: "Logging & Monitoring"
+    field: logging_enabled
+    op: is_true
+    severity: MEDIUM
+    on_missing: WARNING
+    rationale: "Centralized logging preserves an audit trail off-box, supporting detection and forensic investigation even if a device is compromised."
+
+  - id: NET-14
+    title: "Time synchronization (NTP) must be configured"
+    category: "Logging & Monitoring"
+    field: ntp_configured
+    op: is_true
+    severity: LOW
+    on_missing: WARNING
+    rationale: "Accurate, synchronized clocks are essential for correlating logs across devices during an investigation."

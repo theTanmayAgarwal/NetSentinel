@@ -7,13 +7,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class Vendor(str, Enum):
     CISCO = "cisco"
     JUNIPER = "juniper"
     FORTINET = "fortinet"
+    ARUBA = "aruba"
+    DELL = "dell"
     UNKNOWN = "unknown"
 
 
@@ -21,6 +23,7 @@ class Status(str, Enum):
     PASS = "PASS"
     FAIL = "FAIL"
     WARNING = "WARNING"
+    UNMAPPED = "UNMAPPED"
     NOT_APPLICABLE = "NOT_APPLICABLE"
 
 
@@ -34,6 +37,58 @@ class Severity(str, Enum):
     @property
     def rank(self) -> int:
         return {"CRITICAL": 5, "HIGH": 4, "MEDIUM": 3, "LOW": 2, "INFO": 1}[self.value]
+
+
+@dataclass
+class SecurityFact:
+    """Structured security-semantic fact extracted from config or verified memory."""
+
+    property: str
+    value: Any
+    unit: Optional[str] = None
+    source: str = "known_parser"  # known_parser | verified_mapping | human_corrected_mapping | unknown
+    confidence: float = 1.0
+    source_line: Optional[int] = None
+    evidence_text: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "property": self.property,
+            "value": self.value,
+            "unit": self.unit,
+            "source": self.source,
+            "confidence": self.confidence,
+            "source_line": self.source_line,
+            "evidence_text": self.evidence_text,
+        }
+
+
+@dataclass
+class ConfigurationFragment:
+    """Logical fragment of configuration with line range and context preservation."""
+
+    fragment_id: str
+    source_file: str
+    line_start: int
+    line_end: int
+    text: str
+    context: str = "general"
+    vendor: Optional[str] = None
+    platform: Optional[str] = None
+    os_version: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "fragment_id": self.fragment_id,
+            "source_file": self.source_file,
+            "line_start": self.line_start,
+            "line_end": self.line_end,
+            "text": self.text,
+            "context": self.context,
+            "vendor": self.vendor,
+            "platform": self.platform,
+            "os_version": self.os_version,
+        }
 
 
 @dataclass
@@ -75,10 +130,13 @@ class Finding:
     expected: Optional[str] = None
     observed: Optional[str] = None
     remediation: Optional[Remediation] = None
+    nist_mapping: Optional[str] = None
+    disa_stig_mapping: Optional[str] = None
+    iso_mapping: Optional[str] = None
 
     @property
     def is_open(self) -> bool:
-        return self.status in (Status.FAIL, Status.WARNING)
+        return self.status in (Status.FAIL, Status.WARNING, Status.UNMAPPED)
 
     def to_dict(self) -> dict:
         return {
@@ -95,4 +153,8 @@ class Finding:
             "expected": self.expected,
             "observed": self.observed,
             "remediation": self.remediation.to_dict() if self.remediation else None,
+            "nist_mapping": self.nist_mapping,
+            "disa_stig_mapping": self.disa_stig_mapping,
+            "iso_mapping": self.iso_mapping,
         }
+

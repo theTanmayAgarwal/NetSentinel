@@ -10,12 +10,21 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-# ---- Repo layout anchors -------------------------------------------------
-# config.py -> app/core/ ; parents[2] == backend/ ; its parent == repo root.
 BACKEND_DIR: Path = Path(__file__).resolve().parents[2]
 REPO_ROOT: Path = BACKEND_DIR.parent
 DATA_DIR: Path = REPO_ROOT / "data"
 SAMPLE_CONFIGS_DIR: Path = REPO_ROOT / "sample_configs"
+
+try:
+    import dotenv
+    # Find .env in REPO_ROOT or BACKEND_DIR
+    for env_path in [REPO_ROOT / ".env", BACKEND_DIR / ".env"]:
+        if env_path.exists():
+            dotenv.load_dotenv(env_path, override=True)
+            break
+except ImportError:
+    pass
+
 
 
 def _split_csv(value: str) -> list[str]:

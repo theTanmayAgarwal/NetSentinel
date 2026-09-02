@@ -28,6 +28,9 @@ class Rule:
     on_missing: Status
     rationale: str = ""
     value: Any = None
+    nist_mapping: Optional[str] = None
+    disa_stig_mapping: Optional[str] = None
+    iso_mapping: Optional[str] = None
 
 
 def _coerce_rule(raw: dict, framework: str) -> Rule:
@@ -52,6 +55,9 @@ def _coerce_rule(raw: dict, framework: str) -> Rule:
         severity=Severity(str(raw.get("severity", "MEDIUM")).upper()),
         on_missing=Status(str(raw.get("on_missing", "WARNING")).upper()),
         rationale=raw.get("rationale", ""),
+        nist_mapping=raw.get("nist_mapping"),
+        disa_stig_mapping=raw.get("disa_stig_mapping"),
+        iso_mapping=raw.get("iso_mapping"),
     )
 
 

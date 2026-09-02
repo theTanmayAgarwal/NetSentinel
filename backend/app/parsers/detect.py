@@ -42,6 +42,21 @@ _SIGNATURES: Dict[Vendor, list[str]] = {
         r"^\s*config log ",
         r"accprofile",
     ],
+    Vendor.ARUBA: [
+        r"^\s*ssh server vrf",
+        r"arubaos-cx",
+        r"^\s*password-policy min-length",
+        r"^\s*user \w+ group administrators",
+        r"^\s*session-timeout ",
+    ],
+    Vendor.DELL: [
+        r"dell networking",
+        r"os10",
+        r"^\s*ip ssh server enable",
+        r"^\s*system-cli-timeout",
+        r"^\s*security-password min-length",
+        r"^\s*no ip telnet server enable",
+    ],
 }
 
 
@@ -59,3 +74,38 @@ def detect_vendor(config_text: str) -> Vendor:
     scores = score_vendors(config_text)
     best = max(scores, key=lambda v: scores[v])
     return best if scores[best] >= _MIN_SCORE else Vendor.UNKNOWN
+
+
+def detect_vendor_metadata(config_text: str) -> dict:
+    scores = score_vendors(config_text)
+    best = max(scores, key=lambda v: scores[v])
+    score = scores[best]
+    
+    if score < _MIN_SCORE:
+        return {
+            "vendor": Vendor.UNKNOWN.value,
+            "platform": "Unknown",
+            "os_version": "Unknown",
+            "confidence": 0.0,
+        }
+
+    total_patterns = len(_SIGNATURES[best])
+    confidence = min(round(score / total_patterns, 2) + 0.5, 0.98)
+
+    platforms = {
+        Vendor.CISCO: ("Cisco IOS / IOS-XE", "17.x"),
+        Vendor.JUNIPER: ("Junos OS", "21.x"),
+        Vendor.FORTINET: ("FortiOS", "7.x"),
+        Vendor.ARUBA: ("ArubaOS-CX", "10.x"),
+        Vendor.DELL: ("Dell OS10", "10.5.x"),
+        Vendor.UNKNOWN: ("Unknown", "Unknown"),
+    }
+    platform, os_ver = platforms.get(best, ("Unknown", "Unknown"))
+
+    return {
+        "vendor": best.value,
+        "platform": platform,
+        "os_version": os_ver,
+        "confidence": confidence,
+    }
+

@@ -22,9 +22,10 @@ class AuditSummary:
     passed: int = 0
     failed: int = 0
     warnings: int = 0
+    unmapped: int = 0
     not_applicable: int = 0
     critical: int = 0  # subset of failed with CRITICAL severity
-    score: float = 0.0  # compliance percentage over evaluated (non-N/A) controls
+    score: float = 0.0  # compliance percentage over evaluated controls
     by_severity: Dict[str, int] = field(default_factory=dict)
     by_category: Dict[str, Dict[str, int]] = field(default_factory=dict)
 
@@ -34,6 +35,7 @@ class AuditSummary:
             "passed": self.passed,
             "failed": self.failed,
             "warnings": self.warnings,
+            "unmapped": self.unmapped,
             "not_applicable": self.not_applicable,
             "critical": self.critical,
             "score": self.score,
@@ -44,18 +46,31 @@ class AuditSummary:
 
 def _build_explanation(rule: Rule, status: Status, observed: str, expected: str) -> str:
     if status == Status.PASS:
-        return f"{rule.title}: compliant. Observed {observed}."
+        return (
+            f"PASSED — Compliant with benchmark baseline. "
+            f"Observed value '{observed}' satisfies expected rule criteria '{expected}'. "
+            f"Benchmark Rationale: {rule.rationale}"
+        )
     if status == Status.WARNING:
         return (
-            f"{rule.title}: could not be confirmed from the configuration. "
-            f"{rule.rationale} Expected {expected}; observed {observed}."
+            f"WARNING — Required control setting could not be confirmed in configuration. "
+            f"Expected '{expected}', but observed '{observed}'. "
+            f"Benchmark Rationale: {rule.rationale}"
+        )
+    if status == Status.UNMAPPED:
+        return (
+            f"UNMAPPED — Insufficient trusted semantic knowledge to evaluate configuration syntax. "
+            f"Expected '{expected}', but observed '{observed}'. "
+            f"Human verification is required in Adaptive Security Memory. "
+            f"Benchmark Rationale: {rule.rationale}"
         )
     if status == Status.NOT_APPLICABLE:
-        return f"{rule.title}: not applicable to this device."
+        return f"NOT APPLICABLE — Control rule is not applicable to this device profile."
     # FAIL
     return (
-        f"{rule.title}: non-compliant. {rule.rationale} "
-        f"Expected {expected}; observed {observed}."
+        f"FAILED — Non-compliant with security benchmark. "
+        f"Observed value '{observed}' violates expected baseline '{expected}'. "
+        f"Benchmark Rationale: {rule.rationale}"
     )
 
 
@@ -86,6 +101,9 @@ def evaluate_control(model: SecurityModel, rule: Rule) -> Finding:
         normalized_field=rule.field,
         expected=expected,
         observed=observed,
+        nist_mapping=rule.nist_mapping,
+        disa_stig_mapping=rule.disa_stig_mapping,
+        iso_mapping=rule.iso_mapping,
     )
 
 
@@ -94,7 +112,7 @@ def summarize(findings: List[Finding]) -> AuditSummary:
     for f in findings:
         summary.by_severity[f.severity.value] = summary.by_severity.get(f.severity.value, 0) + 1
         cat = summary.by_category.setdefault(
-            f.category, {"passed": 0, "failed": 0, "warnings": 0}
+            f.category, {"passed": 0, "failed": 0, "warnings": 0, "unmapped": 0}
         )
         if f.status == Status.PASS:
             summary.passed += 1
@@ -107,10 +125,13 @@ def summarize(findings: List[Finding]) -> AuditSummary:
         elif f.status == Status.WARNING:
             summary.warnings += 1
             cat["warnings"] += 1
+        elif f.status == Status.UNMAPPED:
+            summary.unmapped += 1
+            cat["unmapped"] += 1
         elif f.status == Status.NOT_APPLICABLE:
             summary.not_applicable += 1
 
-    evaluated = summary.passed + summary.failed + summary.warnings
+    evaluated = summary.passed + summary.failed + summary.warnings + summary.unmapped
     summary.score = round(summary.passed / evaluated * 100, 1) if evaluated else 0.0
     return summary
 
@@ -129,3 +150,4 @@ def evaluate_model(
         )
     )
     return findings, summarize(findings)
+

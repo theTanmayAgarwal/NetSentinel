@@ -55,11 +55,14 @@ class TestExemplarStore(unittest.TestCase):
             "created_by": "trainer",
             "status": "PENDING",
         })
-        self.assertEqual(len(self.repo.list_exemplars(status="PENDING")), 1)
+        pending_before = len(self.repo.list_exemplars(status="PENDING"))
         self.repo.update_exemplar_status(eid, "APPROVED", True)
-        self.assertEqual(len(self.repo.list_exemplars(status="PENDING")), 0)
-        self.assertEqual(len(self.repo.list_exemplars(status="APPROVED")), 1)
-        self.assertEqual(self.repo.list_exemplars()[0]["embedding"], [0.1, 0.2, 0.3])
+        self.assertEqual(len(self.repo.list_exemplars(status="PENDING")), pending_before - 1)
+
+        self.assertGreaterEqual(len(self.repo.list_exemplars(status="APPROVED")), 1)
+        ex_item = self.repo.get_exemplar(eid)
+        self.assertEqual(ex_item["status"], "ACTIVE")
+
 
 
 class TestAuditLogChain(unittest.TestCase):

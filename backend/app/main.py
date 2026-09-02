@@ -48,7 +48,18 @@ def health() -> dict:
     return health_payload()
 
 
-# Feature routers (upload, audits, devices, findings, training, reports)
-# are included in later milestones, e.g.:
-#   from app.api import audits
-#   app.include_router(audits.router, prefix="/api")
+from app.api.audits import router as audits_router
+from app.api.devices import router as devices_router
+from app.api.findings import router as findings_router
+from app.api.mappings import router as mappings_router
+from app.api.reports import router as reports_router
+from app.api.training import router as training_router
+
+app.include_router(audits_router, prefix="/api")
+app.include_router(devices_router, prefix="/api")
+app.include_router(findings_router, prefix="/api")
+app.include_router(mappings_router, prefix="/api")
+app.include_router(training_router, prefix="/api")
+app.include_router(reports_router, prefix="/api")
+
+

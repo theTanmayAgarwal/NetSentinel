@@ -20,10 +20,12 @@ _SECURITY_HINT = re.compile(
     r"\b("
     r"telnet|ssh|snmp|password|passwd|secret|aaa|login|logging|syslog|transport|"
     r"https?|ntp|timeout|banner|community|auth|admin|management|allowaccess|"
-    r"service|user(name)?|access-class|privilege|crypto|tls|radius|tacacs"
+    r"service|user(name)?|access-class|privilege|crypto|tls|radius|tacacs|"
+    r"firewall|rule|security|disable|deny|permit|port"
     r")\b",
     re.IGNORECASE,
 )
+
 
 
 def is_security_line(line: str) -> bool:
